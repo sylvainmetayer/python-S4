@@ -100,7 +100,7 @@ def agent(socket_c):
                 reponse = pwd.communicate()[0]
                 socket_c.send("257 " + reponse + "\r\n")
 
-            elif isConnected and commande == "PORT":
+            elif commande == "PORT":  # TODO : penser à remettre le isConnected un jour ! C'etait pour du test
                 if verbose:
                     print "Je recupere le port temporaire du client"
 
@@ -126,7 +126,7 @@ def agent(socket_c):
                 socket_data.close()
                 socket_c.send("226 J'ai fini de t'envoyer des donnees ! \r\n")
 
-            elif isConnected and commande == "RETR":
+            elif commande == "RETR":  #TODO : penser à remettre le isConnected un jour ! C'etait pour du test
                 if verbose:
                     print "J'envoie un fichier au client"
 
