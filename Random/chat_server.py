@@ -8,7 +8,7 @@ import sys
 
 # TODO refactor + baser user sur le port de connexion et non la socket (split a faire sur le address_c)
 
-def getCoffee():
+def get_coffee():
     coffee = '\n              {               \n'
     coffee += '          }   }   {             \n'
     coffee += '          {   {  }  }           \n'
@@ -23,44 +23,51 @@ def getCoffee():
     coffee += '       |             /  /       \n'
     coffee += '        |            |  /       \n'
     coffee += '        |            "T"        \n'
-    coffee += '        ""---------""           \n'
+    coffee += '        """---------""           \n'
     return coffee
 
 
-def getUsername(dictionnaire, client_list, socket_c):
+def get_username(dictionnaire, client_list, client):
     """
     Cette fonction retourne le nom d'utilisateur d'une socket.
     :param dictionnaire:
     :param client_list:
-    :param socket_c:
+    :param client:
     :return:
     """
     retour = ""
     for key, value in dictionnaire.iteritems():
-        if key == socket_c:
+        if key == client:
             retour = value
     if retour == "":
         retour = "Anoynme"
     return retour
 
 
-def sendToAll(current, socket_list, message, asAdmin=False):
+def send_to_all(current, socket_list, message, asAdmin=False):
     """
     Cette fonction permet d'envoyer un message à toute une liste de client, sans prendre en compte le client actuel
+    :rtype: object
     :param current: Utilisateur actuel
     :param socket_list: liste de client
     :param message: Le message à envoyer
-    :return: ""
+    :return: None
     """
-    for user in socket_list:
-        if user == current:
+    for user_tmp in socket_list:
+        if user_tmp == current:
             pass
         else:
-            utilisateur = getUsername(username, client_list, current)
+            utilisateur = get_username(username, client_list, current)
             if asAdmin:
-                user.send("******** " + message + " ********\r\n")
+                if user_tmp == sys.stdout:
+                    print "******** " + message + " ********\r\n"
+                else:
+                    user_tmp.send("******** " + message + " ********\r\n")
             else:
-                user.send(utilisateur + ": " + message + '\n')
+                if user_tmp == sys.stdout:
+                    print utilisateur + ": " + message + '\n'
+                else:
+                    user_tmp.send(utilisateur + ": " + message + '\n')
 
 
 if len(sys.argv) != 3:
@@ -70,7 +77,7 @@ if len(sys.argv) != 3:
 adresse = sys.argv[1]
 port = sys.argv[2]
 
-socket_l = socket.socket();
+socket_l = socket.socket()
 socket_l.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 socket_l.bind((adresse, int(port)))
 
@@ -78,6 +85,8 @@ socket_l.listen(5)
 socket_list = []
 client_list = []
 socket_list.append(socket_l)
+socket_list.append(sys.stdin)
+client_list.append(sys.stdout)  # la console
 
 username = {}
 
@@ -90,8 +99,13 @@ while True:
             print address_c
             socket_list.append(socket_c)
             client_list.append(socket_c)
-            socket_c.send(
-                "Bienvenue sur mon serveur de chat :\n'USER <username>' pour définir/modifier votre nom d'utilisateur" + "\n")
+            message = "Bienvenue sur mon serveur de chat :\n"
+            message += "'USER <username>' pour définir/modifier votre nom d'utilisateur\n"
+            socket_c.send(message)
+        elif s == sys.stdin:
+            message = sys.stdin.readline()
+            message = message.replace("\n", "").replace("\r", "")
+            send_to_all(sys.stdout, client_list, "Message du serveur : " + message, True)
         else:
             message = s.recv(1024)
             message = message.replace("\n", "").replace("\r", "")
@@ -105,7 +119,7 @@ while True:
                     pass
                 socket_list.remove(s)
                 client_list.remove(s)
-                sendToAll("", client_list, user + " s'est deconnecté !", True)
+                send_to_all("", client_list, user + " s'est deconnecté !", True)
             else:
                 code = message.split(" ")[0]
                 if code == "USER":
@@ -114,19 +128,25 @@ while True:
                         s.send("Désolé, ce pseudo est déjà pris !\r\n")
                     else:
                         if username.has_key(s):
-                            sendToAll(s, client_list, username[s] + " a changé son pseudo en " + str(user))
-                        username[s] = user
-                        s.send("Votre pseudo est " + user + "\r\n")
-                        sendToAll(s, client_list, username[s] + " a rejoint le chat", True)
+                            username[s] = user
+                            s.send("Votre pseudo est " + user + "\n")
+                            s.send("Votre message : \n")
+                            send_to_all(s, client_list, username[s] + " a changé son pseudo en " + str(user))
+                        else:
+                            username[s] = user
+                            s.send("Votre pseudo est " + user + "\n")
+                            s.send("Votre message : \n")
+                            send_to_all(s, client_list, username[s] + " a rejoint le chat", True)
                 elif code == "COFFEE":
-                    if username.has_key(s):
-                        sendToAll(s, client_list, "Café de " + username[s] + getCoffee(), True)
+                    if username in s:
+                        send_to_all(s, client_list, "Café de " + username[s] + get_coffee(), True)
                     else:
                         s.send("Vous devez d'abord définir votre nom d'utilisateur !\r\n")
                 elif code == "HOW":
                     s.send("Il y a " + str(len(username)) + " utilisateur(s) actif(s) sur le chat.\r\n")
                 else:
                     if username.has_key(s):
-                        sendToAll(s, client_list, message)
+                        send_to_all(s, client_list, message)
+                        s.send("Votre message : \n")
                     else:
                         s.send("Vous devez d'abord définir votre nom d'utilisateur !\r\n")
