@@ -6,32 +6,19 @@ import socket
 import sys
 
 
-# TODO refactor + baser user sur le port de connexion et non la socket (split a faire sur le address_c)
+# TODO refactor
 
-def get_coffee():
-    coffee = '\n              {               \n'
-    coffee += '          }   }   {             \n'
-    coffee += '          {   {  }  }           \n'
-    coffee += '           }   }{  {            \n'
-    coffee += '         _{  }{  }  }_          \n'
-    coffee += '        (  }{  }{  {  )         \n'
-    coffee += '        |""---------""|         \n'
-    coffee += '        |             /""\      \n'
-    coffee += '        |            | _  |     \n'
-    coffee += '        |             / | |     \n'
-    coffee += '       |             |/  |      \n'
-    coffee += '       |             /  /       \n'
-    coffee += '        |            |  /       \n'
-    coffee += '        |            "T"        \n'
-    coffee += '        """---------""           \n'
-    return coffee
+def getAllUsername():
+    message = "Liste des utilisateurs : "
+    for user in username:
+        message += get_username(username, user) + ", "
+    return message;
 
 
-def get_username(dictionnaire, client_list, client):
+def get_username(dictionnaire, client):
     """
     Cette fonction retourne le nom d'utilisateur d'une socket.
     :param dictionnaire:
-    :param client_list:
     :param client:
     :return:
     """
@@ -42,7 +29,6 @@ def get_username(dictionnaire, client_list, client):
     if retour == "":
         retour = "Anoynme"
     return retour
-
 
 def send_to_all(current, socket_list, message, asAdmin=False):
     """
@@ -57,7 +43,7 @@ def send_to_all(current, socket_list, message, asAdmin=False):
         if user_tmp == current:
             pass
         else:
-            utilisateur = get_username(username, client_list, current)
+            utilisateur = get_username(username, current)
             if asAdmin:
                 if user_tmp == sys.stdout:
                     print "******** " + message + " ********\r\n"
@@ -96,21 +82,26 @@ while True:
         if s == socket_l:  # Nouveau client
             socket_c, address_c = socket_l.accept()
             socket_c.setblocking(0)
-            print address_c
+            # print address_c
             socket_list.append(socket_c)
             client_list.append(socket_c)
-            message = "Bienvenue sur mon serveur de chat :\n"
-            message += "'USER <username>' pour définir/modifier votre nom d'utilisateur\n"
+            message = "331 Votre nom d'utilisateur :\n"
             socket_c.send(message)
         elif s == sys.stdin:
             message = sys.stdin.readline()
             message = message.replace("\n", "").replace("\r", "")
-            send_to_all(sys.stdout, client_list, "Message du serveur : " + message, True)
+
+            code = message.split(" ")[0]
+            if code == "QUIT":
+                send_to_all(sys.stdout, client_list, "Arrêt du serveur.", True)
+                sys.exit(0)
+            else:
+                send_to_all(sys.stdout, client_list, "Message du serveur : " + message, True)
         else:
             message = s.recv(1024)
             message = message.replace("\n", "").replace("\r", "")
             if len(message) == 0:
-                s.send("Au revoir.\r\n")
+                s.send("221 Au revoir.\r\n")
                 user = username.get(s)
                 try:
                     s.close()
@@ -118,32 +109,36 @@ while True:
                 except Exception:
                     pass
                 socket_list.remove(s)
-                client_list.remove(s)
-                send_to_all("", client_list, user + " s'est deconnecté !", True)
+                if client_list.__contains__(s):
+                    client_list.remove(s)
+                    send_to_all("", client_list, user + " s'est deconnecté !", True)
+                    #Sinon, pas la peine d'envoyer un message, l'utilisateur n'était pas connecté..
             else:
                 code = message.split(" ")[0]
                 if code == "USER":
-                    user = message.split(" ")[1]
+                    user = message[4:]
                     if username.values().__contains__(user):
-                        s.send("Désolé, ce pseudo est déjà pris !\r\n")
+                        s.send("403 Désolé, ce pseudo est déjà pris !\r\n")
                     else:
                         if username.has_key(s):
+                            send_to_all("", client_list, username[s] + " a changé son pseudo en " + str(user))
                             username[s] = user
-                            s.send("Votre pseudo est " + user + "\n")
-                            s.send("Votre message : \n")
-                            send_to_all(s, client_list, username[s] + " a changé son pseudo en " + str(user))
                         else:
                             username[s] = user
-                            s.send("Votre pseudo est " + user + "\n")
-                            s.send("Votre message : \n")
-                            send_to_all(s, client_list, username[s] + " a rejoint le chat", True)
-                elif code == "COFFEE":
-                    if username in s:
-                        send_to_all(s, client_list, "Café de " + username[s] + get_coffee(), True)
-                    else:
-                        s.send("Vous devez d'abord définir votre nom d'utilisateur !\r\n")
+                            send_to_all("", client_list, getAllUsername(), True)
                 elif code == "HOW":
                     s.send("Il y a " + str(len(username)) + " utilisateur(s) actif(s) sur le chat.\r\n")
+                elif code == "QUIT":
+                    s.send("221 Au revoir.\r\n")
+                    user = username.get(s)
+                    try:
+                        s.close()
+                        username.__delitem__(s)
+                    except Exception:
+                        pass
+                    socket_list.remove(s)
+                    client_list.remove(s)
+                    send_to_all("", client_list, user + " s'est deconnecté !", True)
                 else:
                     if username.has_key(s):
                         send_to_all(s, client_list, message)
