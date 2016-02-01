@@ -21,6 +21,11 @@ class Client(ConnectionListener):
     ### Network event/message callbacks ###
     def Network_connected(self, data):
         print('connecte au serveur !')
+        user = raw_input("Votre user : ")
+        connection.Send({"action":"username", "username":user})
+
+    def Network_connexion_ok(self, data):
+        print data["message"]
 
     def Network_error(self, data):
         print 'error:', data['error'][1]
