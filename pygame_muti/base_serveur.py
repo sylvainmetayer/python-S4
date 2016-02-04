@@ -5,6 +5,7 @@ import os
 import pygame
 import sys
 import time
+from pygame.locals import *
 
 from PodSixNet.Channel import Channel
 from PodSixNet.Server import Server

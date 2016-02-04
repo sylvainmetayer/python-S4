@@ -9,6 +9,7 @@ import os
 import pygame
 import random
 import sys
+from pygame.locals import *
 
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 768
@@ -108,7 +109,9 @@ class Ennemi(pygame.sprite.Sprite):
         self.rect = self.rect.move([0, 5])
         if self.rect.bottom >= SCREEN_HEIGHT + 10:
             print "Game Over"
-            sys.exit(0)
+            #sys.exit(0)
+            self.kill()
+
 
 
 # MAIN

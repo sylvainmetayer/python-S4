@@ -4,6 +4,7 @@
 import os
 import pygame
 import sys
+from pygame.locals import *
 
 from PodSixNet.Connection import connection, ConnectionListener
 
@@ -93,9 +94,29 @@ class Client(ConnectionListener):
         sys.exit()
 
 
-class MyShipSprite(pygame.sprite.RenderClear, ConnectionListener):
+class MyShotSprite(pygame.sprite.RenderClear, ConnectionListener):
     def __init__(self):
         pygame.sprite.RenderClear.__init__()
+        self.tirs = pygame.sprite.RenderClear()
+
+    def Network_shot_update(self, data):
+        for shot in self.tirs:
+            shot.update()
+
+    def Network_shot_add(self, data):
+        tir = Tir()
+        tir.rect.center = data["center"]
+        self.tirs.add(tir)
+
+    def Network_shot_remove(self, data):
+        self.tirs.remove(data["tir"])
+
+    def Network_shot_update(self, data):
+        pass
+
+    def update(self):
+        for shot in self.tirs:
+            shot.update()
 
 
 if len(sys.argv) != 3:
