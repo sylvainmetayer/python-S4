@@ -31,7 +31,7 @@ def load_png(name):
 
 class Tir(pygame.sprite.Sprite):
     """
-    Classe de tir du vaisseau côté serveur.
+    Classe de tir du vaisseau
     """
 
     def __init__(self, ship):
@@ -41,9 +41,30 @@ class Tir(pygame.sprite.Sprite):
         self.rect.center = ship.rect.center
 
     def update(self):
+        """
+
+        :return: True si le tir est mort, False sinon
+        """
         self.rect = self.rect.move([0, -10])
         if self.rect.top <= -20:
             self.kill()
+            return True;
+        return False;
+
+
+class Tirs(pygame.sprite.Group):
+    """
+    Classe le groupe de tirs côté serveur.
+    """
+
+    def __init__(self):
+        pygame.sprite.Group.__init__(self)
+
+    def update(self):
+        for tir in self.sprites():
+            retour = tir.update()
+            if retour == True:
+                self.remove(tir);  # Le tir est mort.
 
 
 class Ship(pygame.sprite.Sprite):
@@ -100,13 +121,21 @@ class ClientChannel(Channel):
 
     def __init__(self, *args, **kwargs):
         Channel.__init__(self, *args, **kwargs)
+
+        # Gestion vaisseau
         self.ship = Ship()
+        self.ship_sprite = pygame.sprite.RenderClear()
+        self.ship_sprite.add(self.ship)
+
+        # Gestion tirs
+        self.tir_sprites = Tirs()
 
     def Close(self):
         self._server.del_client(self)
 
     def Network(self, data):
-        print('message de type %s recu' % data['action'])
+        # print('message de type %s recu' % data['action'])
+        pass
 
     def Network_keys(self, data):
         """
@@ -126,12 +155,22 @@ class ClientChannel(Channel):
             self.ship.right()
         if touches[K_LEFT]:
             self.ship.left()
+        if touches[K_SPACE]:
+            tir = Tir(self.ship)
+            self.tir_sprites.add(tir)
+
+    def send_shot(self):
+        liste = []
+        for tir in self.tir_sprites:
+            liste.append(tir.rect.center)
+        self.Send({"action": "shot", "liste": liste})
 
     def send_ship(self):
         self.Send({"action": "ship", "center": self.ship.rect.center})
 
     def update_ship(self):
-        self.ship.update()
+        self.ship_sprite.update()
+        self.tir_sprites.update()
 
 
 class MyServer(Server):
@@ -157,6 +196,10 @@ class MyServer(Server):
         for client in self.clients:
             client.send_ship()
 
+    def send_shot(self):
+        for client in self.clients:
+            client.send_shot();
+
     def launch_game(self):
         pygame.display.set_caption("Server")
         screen = pygame.display.set_mode((SCREEN_WIDTH / 4, SCREEN_HEIGHT / 4))
@@ -171,6 +214,7 @@ class MyServer(Server):
             if self.run:
                 self.update_ship()
                 self.send_ship()
+                self.send_shot()
 
             screen.blit(background_image, background_rect)
             pygame.display.flip()
@@ -188,6 +232,9 @@ def main_prog():
     my_server = MyServer(localaddr=(sys.argv[1], int(sys.argv[2])))
     my_server.launch_game()
 
+
+if len(sys.argv) != 3:
+    print "Usage:", sys.argv[0], "host port"
 
 if __name__ == '__main__':
     main_prog()

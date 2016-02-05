@@ -27,6 +27,7 @@ def load_png(name):
     return image, image.get_rect()
 
 
+
 class Ship(pygame.sprite.Sprite, ConnectionListener):
     """
     Classe représentant le vaisseau côté client.
@@ -48,105 +49,110 @@ class Ship(pygame.sprite.Sprite, ConnectionListener):
 
 class Tir(pygame.sprite.Sprite):
     """
-    Classe de tir du vaisseau côté client.
+    Classe de tir
     """
 
-    def __init__(self, ship):
-        self.image, self.rect = load_png('Pics/shot.png')
+    def __init__(self, coordonnees):
+        pygame.sprite.Sprite.__init__(self)
+        self.image, self.rect = load_png("Pics/shot.png");
         self.speed = [0, -1]
-        self.rect.center = ship.rect.center
+        self.rect.center = coordonnees
+
+    def update(self):
+        pass
+
+
+class Tirs(pygame.sprite.Group, ConnectionListener):
+    """
+    Classe de groupe de tirs côté client.
+    """
+
+    def __init__(self):
+        pygame.sprite.Group.__init__(self)
 
     def update(self):
         self.Pump()
 
     def Network_shot(self, data):
-        if data['isAlive'] == True:
-            self.rect.center = data['center']
-        else:
-            self.kill()
+        self.empty()
+        listeTir = data["liste"]
+        # print listeTir
+        for xy in listeTir:
+            tir = Tir(xy)
+            self.add(tir)
 
 
 class Client(ConnectionListener):
     def __init__(self, host, port):
         self.Connect((host, port))
-        self.game_client = False
+        self.game_client = True
 
     def Loop(self):
         connection.Pump()
         self.Pump()
 
     def Network(self, data):
-        print('message de type %s recu' % data['action'])
+        # ('message de type %s recu' % data['action'])
+        # print data
+        pass
 
     ### Network event/message callbacks ###
     def Network_connected(self, data):
         print('connecte au serveur !')
-
-    def Network_connexion_ok(self, data):
-        print data["message"]
+        self.game_client = True;
 
     def Network_error(self, data):
         print 'error:', data['error'][1]
         connection.Close()
+        self.game_client = False;
 
     def Network_disconnected(self, data):
         print 'Server disconnected'
         sys.exit()
 
 
-class MyShotSprite(pygame.sprite.RenderClear, ConnectionListener):
-    def __init__(self):
-        pygame.sprite.RenderClear.__init__()
-        self.tirs = pygame.sprite.RenderClear()
-
-    def Network_shot_update(self, data):
-        for shot in self.tirs:
-            shot.update()
-
-    def Network_shot_add(self, data):
-        tir = Tir()
-        tir.rect.center = data["center"]
-        self.tirs.add(tir)
-
-    def Network_shot_remove(self, data):
-        self.tirs.remove(data["tir"])
-
-    def Network_shot_update(self, data):
-        pass
-
-    def update(self):
-        for shot in self.tirs:
-            shot.update()
-
-
-if len(sys.argv) != 3:
-    print "Usage:", sys.argv[0], "host port"
-else:
+def main():
+    # Initialisation pygame
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
     client = Client(sys.argv[1], int(sys.argv[2]))
-    ship = Ship()
+
     pygame.init()
     clock = pygame.time.Clock()
     pygame.key.set_repeat(1, 1)
 
-    # Objects creation
+    # On crée les objets
     background_image, background_rect = load_png('Pics/background.jpg')
     ship = Ship()  # creation d'une instance de Ship
-    ship_sprite = pygame.sprite.RenderClear()  # creation d'un groupe de sprite
-    ship_sprite.add(ship)  # ajout du sprite au groupe de sprites
+    ship_sprites = pygame.sprite.RenderClear()  # creation d'un groupe de sprite
+    ship_sprites.add(ship)
+    tir_sprites = Tirs()
 
     while True:
         clock.tick(60)  # max speed is 60 frames per second
-
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                sys.exit(0)
-
-        touches = pygame.key.get_pressed()
-        client.Send({"action": "keys", "keys": touches})
         client.Loop()
-        ship.update()
 
-        screen.blit(background_image, background_rect)
-        ship_sprite.draw(screen)
-        pygame.display.flip()
+        # Si le client lance le jeu
+        if client.game_client is True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    sys.exit(0)
+
+            # Récupération des touches
+            touches = pygame.key.get_pressed()
+            client.Send({"action": "keys", "keys": touches})
+
+            # Refresh connexion + update
+            ship_sprites.update()
+            tir_sprites.update()
+
+            # On dessine
+            screen.blit(background_image, background_rect)
+            ship_sprites.draw(screen)
+            tir_sprites.draw(screen)
+            pygame.display.flip()
+
+
+if __name__ == '__main__':
+    print "Je passe dans le main"
+    main()
+    sys.exit(0)
