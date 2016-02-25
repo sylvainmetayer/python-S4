@@ -13,6 +13,9 @@ from PodSixNet.Server import Server
 SCREEN_WIDTH = 1024
 SCREEN_HEIGHT = 768
 
+#Gestion Tirs
+
+
 
 def load_png(name):
     """Load image and return image object"""
@@ -126,6 +129,8 @@ class ClientChannel(Channel):
         self.ship = Ship()
         self.ship_sprite = pygame.sprite.RenderClear()
         self.ship_sprite.add(self.ship)
+        self.tirCompteurTmp = 30
+        self.shotAllowed = True
 
         # Gestion tirs
         self.tir_sprites = Tirs()
@@ -159,6 +164,7 @@ class ClientChannel(Channel):
             tir = Tir(self.ship)
             self.tir_sprites.add(tir)
 
+
     def send_shot(self):
         liste = []
         for tir in self.tir_sprites:
@@ -190,11 +196,11 @@ class MyServer(Server):
 
     def update_ship(self):
         for client in self.clients:
-            client.update_ship()
+            client.update_bar()
 
     def send_ship(self):
         for client in self.clients:
-            client.send_ship()
+            client.send_bar()
 
     def send_shot(self):
         for client in self.clients:
@@ -205,6 +211,10 @@ class MyServer(Server):
         screen = pygame.display.set_mode((SCREEN_WIDTH / 4, SCREEN_HEIGHT / 4))
         background_image, background_rect = load_png('Pics/background.jpg')
         clock = pygame.time.Clock()
+
+
+        #Gestion Tirs:
+
 
         while True:
             clock.tick(60)

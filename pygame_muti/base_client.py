@@ -110,7 +110,6 @@ class Client(ConnectionListener):
         print 'Server disconnected'
         sys.exit()
 
-
 def main():
     # Initialisation pygame
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
